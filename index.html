@@ -2,17 +2,42 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Plattformsspel - Början</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Basic Jumper - Plattformsspel</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="game-container">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div class="controls-info">
-            <p>← → för att röra dig | ↑ eller Mellanslag för att hoppa</p>
+    <div class="game-wrapper">
+        <div class="game-header">
+            <h1>BASIC JUMPER</h1>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="leftBtn" class="control-btn left-btn" aria-label="Vänster">
+                <span class="btn-icon">←</span>
+                <span class="btn-text">VÄNSTER</span>
+            </button>
+            
+            <button id="jumpBtn" class="control-btn jump-btn" aria-label="Hoppa">
+                <span class="btn-icon">↑</span>
+                <span class="btn-text">HOPPA</span>
+            </button>
+            
+            <button id="rightBtn" class="control-btn right-btn" aria-label="Höger">
+                <span class="btn-icon">→</span>
+                <span class="btn-text">HÖGER</span>
+            </button>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-item">🎮 Använd knapparna eller tangentbordet</div>
         </div>
     </div>
+    
     <script type="module" src="app.js"></script>
 </body>
 </html>

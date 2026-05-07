@@ -4,8 +4,14 @@ import Player from './Player.js';
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Spelarinställningar
-const player = new Player(100, 500, 40, 40);
+// Globale variabler
+let player;
+let groundY;
+let particles = [];
+let canJump = true;
+let justLanded = false;
+let landTimer = 0;
+let animationId = null;
 
 // Tangentbordsinput
 const keys = {
@@ -17,15 +23,45 @@ const keys = {
     KeyD: false
 };
 
-// Marknivå (groundY bestämmer var marken är)
-const groundY = canvas.height - 50; // 50px från botten
+// Touch-kontroller
+let touchLeft = false;
+let touchRight = false;
+let touchJump = false;
 
-// För att förhindra dubbelhopp
-let canJump = true;
+// Sätt canvas storlek dynamiskt för responsiv design
+function resizeCanvas() {
+    const container = canvas.parentElement;
+    const containerWidth = container.clientWidth;
+    
+    // Behåll proportionerna (4:3 för bättre mobilvisning)
+    canvas.width = Math.min(containerWidth, 600);
+    canvas.height = canvas.width * 0.75; // 4:3 ratio
+    
+    // Uppdatera groundY baserat på nya höjden (50px från botten)
+    groundY = canvas.height - 50;
+    
+    // Justera spelarens position om den finns
+    if (player) {
+        if (player.y + player.height > groundY) {
+            player.y = groundY - player.height;
+            player.velocityY = 0;
+            player.isGrounded = true;
+        }
+    }
+    
+    console.log(`Canvas storlek: ${canvas.width}x${canvas.height}, GroundY: ${groundY}`);
+}
 
-// Spelloop
-let animationId = null;
-let lastTimestamp = 0;
+// Initiera spelaren
+function initPlayer() {
+    player = new Player(
+        canvas.width / 2 - 20, // Centrera horisontellt
+        groundY - 40,          // Placera på marken
+        40, 
+        40
+    );
+    console.log(`Spelare initierad vid position: (${player.x}, ${player.y})`);
+}
 
 // Hantera tangentbordshändelser
 function handleKeyDown(e) {
@@ -47,40 +83,191 @@ function handleKeyUp(e) {
     }
 }
 
-// Fönsterresponzivitet - uppdatera canvas-storlek
-function resizeCanvas() {
-    // Behåll den faktiska canvas-storleken oförändrad för logiken
-    // men låt CSS hantera visuell skalning
-    const container = canvas.parentElement;
-    const maxWidth = window.innerWidth - 40;
-    const maxHeight = window.innerHeight - 120;
+// Hantera touch-kontroller
+function setupTouchControls() {
+    const leftBtn = document.getElementById('leftBtn');
+    const rightBtn = document.getElementById('rightBtn');
+    const jumpBtn = document.getElementById('jumpBtn');
     
-    if (maxWidth < 800) {
-        canvas.style.width = `${maxWidth}px`;
-        canvas.style.height = `${maxWidth * 0.75}px`;
-    } else {
-        canvas.style.width = '800px';
-        canvas.style.height = '600px';
+    if (!leftBtn || !rightBtn || !jumpBtn) {
+        console.error('Kunde inte hitta touch-knappar!');
+        return;
+    }
+    
+    // Vänster knapp
+    leftBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        touchLeft = true;
+        leftBtn.classList.add('active');
+    });
+    leftBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        touchLeft = false;
+        leftBtn.classList.remove('active');
+    });
+    leftBtn.addEventListener('mousedown', () => {
+        touchLeft = true;
+        leftBtn.classList.add('active');
+    });
+    leftBtn.addEventListener('mouseup', () => {
+        touchLeft = false;
+        leftBtn.classList.remove('active');
+    });
+    
+    // Höger knapp
+    rightBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        touchRight = true;
+        rightBtn.classList.add('active');
+    });
+    rightBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        touchRight = false;
+        rightBtn.classList.remove('active');
+    });
+    rightBtn.addEventListener('mousedown', () => {
+        touchRight = true;
+        rightBtn.classList.add('active');
+    });
+    rightBtn.addEventListener('mouseup', () => {
+        touchRight = false;
+        rightBtn.classList.remove('active');
+    });
+    
+    // Hopp knapp
+    jumpBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        touchJump = true;
+        jumpBtn.classList.add('active');
+    });
+    jumpBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        touchJump = false;
+        jumpBtn.classList.remove('active');
+    });
+    jumpBtn.addEventListener('mousedown', () => {
+        touchJump = true;
+        jumpBtn.classList.add('active');
+    });
+    jumpBtn.addEventListener('mouseup', () => {
+        touchJump = false;
+        jumpBtn.classList.remove('active');
+    });
+    
+    // Förhindra att knapparna får fokus och scrollar sidan
+    [leftBtn, rightBtn, jumpBtn].forEach(btn => {
+        btn.addEventListener('touchmove', (e) => e.preventDefault());
+    });
+    
+    console.log('Touch-kontroller aktiverade');
+}
+
+// Kombinera tangentbords- och touch-input
+function getCombinedInput() {
+    return {
+        left: keys.ArrowLeft || keys.KeyA || touchLeft,
+        right: keys.ArrowRight || keys.KeyD || touchRight,
+        jump: keys.ArrowUp || keys.Space || touchJump
+    };
+}
+
+// Partikelgenerering vid hopp
+function addJumpParticles(x, y) {
+    for(let i = 0; i < 15; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 3 + 1;
+        
+        particles.push({
+            x: x + 20,
+            y: y + 40,
+            vx: Math.cos(angle) * speed * (Math.random() * 2),
+            vy: -Math.random() * 4 - 2,
+            life: 1,
+            size: Math.random() * 4 + 2,
+            color: `hsl(${Math.random() * 20 + 20}, 70%, 50%)`
+        });
+    }
+    
+    for(let i = 0; i < 8; i++) {
+        particles.push({
+            x: x + 20,
+            y: y + 40,
+            vx: (Math.random() - 0.5) * 5,
+            vy: -Math.random() * 3,
+            life: 0.8,
+            size: Math.random() * 3 + 1,
+            color: `hsl(${Math.random() * 30 + 15}, 60%, 45%)`
+        });
+    }
+}
+
+// Dammoln vid landning
+function addLandingDust(x, y) {
+    for(let i = 0; i < 20; i++) {
+        particles.push({
+            x: x + 20,
+            y: y + 40,
+            vx: (Math.random() - 0.5) * 4,
+            vy: -Math.random() * 2,
+            life: 0.6,
+            size: Math.random() * 5 + 2,
+            color: `hsl(${Math.random() * 20 + 25}, 60%, 45%)`
+        });
+    }
+}
+
+// Uppdatera partiklar
+function updateParticles() {
+    for(let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15;
+        p.vx *= 0.98;
+        p.life -= 0.02;
+        
+        if(p.life <= 0 || p.y > groundY + 50 || p.x < -50 || p.x > canvas.width + 50) {
+            particles.splice(i, 1);
+        }
+    }
+}
+
+// Rita partiklar
+function drawParticles() {
+    for(let particle of particles) {
+        ctx.save();
+        const opacity = Math.min(particle.life * 0.8, 0.8);
+        const color = particle.color || `rgba(139, 69, 19, ${opacity})`;
+        
+        ctx.fillStyle = color;
+        ctx.shadowBlur = 3;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size * particle.life, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
     }
 }
 
 // Rita bakgrund
 function drawBackground() {
-    // Himmel med gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, '#87CEEB');
     gradient.addColorStop(0.7, '#98D8E8');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Moln
+    // Moln (anpassade efter canvas storlek)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    drawCloud(100, 80, 60);
-    drawCloud(500, 120, 70);
-    drawCloud(700, 60, 50);
-    drawCloud(300, 150, 55);
+    drawCloud(canvas.width * 0.15, canvas.height * 0.15, 60);
+    drawCloud(canvas.width * 0.65, canvas.height * 0.2, 70);
+    drawCloud(canvas.width * 0.85, canvas.height * 0.1, 50);
+    drawCloud(canvas.width * 0.4, canvas.height * 0.25, 55);
     
-    // Mark med gräs
+    // Mark
     ctx.fillStyle = '#5a8f4c';
     ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
     
@@ -92,19 +279,19 @@ function drawBackground() {
         ctx.fillRect(i + 20, groundY - 3, 3, 8);
     }
     
-    // Markkant med skugga
+    // Markkant
     ctx.fillStyle = '#6b9e5a';
     ctx.fillRect(0, groundY, canvas.width, 5);
     
-    // Jordlager under gräset
+    // Jordlager
     ctx.fillStyle = '#8B5A2B';
     ctx.fillRect(0, groundY + 5, canvas.width, 20);
     ctx.fillStyle = '#6B4226';
     ctx.fillRect(0, groundY + 25, canvas.width, canvas.height - groundY - 25);
     
-    // Små stenar på marken
+    // Små stenar
     ctx.fillStyle = '#888';
-    for(let i = 0; i < 12; i++) {
+    for(let i = 0; i < Math.min(12, canvas.width / 60); i++) {
         ctx.beginPath();
         ctx.ellipse(50 + i * 70, groundY - 3, 5, 3, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -121,107 +308,117 @@ function drawCloud(x, y, size) {
     ctx.fill();
 }
 
-// Rita partiklar för hopp (för extra effekt)
-let particles = [];
-
-function addJumpParticles(x, y) {
-    for(let i = 0; i < 8; i++) {
-        particles.push({
-            x: x + 20,
-            y: y + 40,
-            vx: (Math.random() - 0.5) * 3,
-            vy: Math.random() * 2,
-            life: 1,
-            size: Math.random() * 3 + 2
-        });
-    }
-}
-
-function updateParticles() {
-    for(let i = particles.length - 1; i >= 0; i--) {
-        particles[i].x += particles[i].vx;
-        particles[i].y += particles[i].vy;
-        particles[i].life -= 0.03;
-        particles[i].vy += 0.2;
-        
-        if(particles[i].life <= 0 || particles[i].y > groundY) {
-            particles.splice(i, 1);
-        }
-    }
-}
-
-function drawParticles() {
-    for(let particle of particles) {
-        ctx.fillStyle = `rgba(255, 100, 100, ${particle.life * 0.6})`;
-        ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
-    }
-}
-
-// Rita spelarinfo (position och status)
+// Rita debug info
 function drawDebugInfo() {
-    ctx.font = '14px monospace';
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(10, 10, 180, 60);
-    ctx.fillStyle = 'white';
-    ctx.fillText(`Position: (${Math.floor(player.x)}, ${Math.floor(player.y)})`, 15, 30);
-    ctx.fillText(`Velocity Y: ${player.velocityY.toFixed(1)}`, 15, 50);
-    ctx.fillText(`Marken: ${player.isGrounded ? 'Ja' : 'Nej'}`, 15, 70);
+    if (canvas.width > 700) {
+        ctx.font = '12px monospace';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(8, 8, 150, 60);
+        ctx.fillStyle = 'white';
+        ctx.fillText(`Pos: ${Math.floor(player.x)}, ${Math.floor(player.y)}`, 12, 25);
+        ctx.fillText(`Vel Y: ${player.velocityY.toFixed(1)}`, 12, 42);
+        ctx.fillText(`Mark: ${player.isGrounded ? 'Ja' : 'Nej'}`, 12, 59);
+    }
 }
 
 // Spelloop
+let previousGroundedState = true;
+
 function gameLoop() {
-    // Uppdatera spelaren
-    player.update(keys, canvas.width, groundY);
+    if (!player || !groundY) {
+        console.warn('Spelet är inte redo än');
+        requestAnimationFrame(gameLoop);
+        return;
+    }
     
-    // Lägg till partiklar vid hopp
-    if(keys.ArrowUp || keys.Space) {
-        if(player.isGrounded && canJump) {
-            addJumpParticles(player.x, player.y + player.height);
-            canJump = false;
-        }
-    } else {
+    const wasGrounded = player.isGrounded;
+    const input = getCombinedInput();
+    
+    // Konvertera input till keys-objekt för player.update
+    const playerKeys = {
+        ArrowLeft: input.left,
+        ArrowRight: input.right,
+        ArrowUp: input.jump,
+        Space: input.jump,
+        KeyA: input.left,
+        KeyD: input.right
+    };
+    
+    // Uppdatera spelaren
+    player.update(playerKeys, canvas.width, groundY);
+    
+    // Hantera hopp-partiklar
+    if (input.jump && player.isGrounded && canJump) {
+        addJumpParticles(player.x, player.y);
+        canJump = false;
+        setTimeout(() => {
+            if(player && player.isGrounded) {
+                addJumpParticles(player.x, player.y);
+            }
+        }, 50);
+    } else if (!input.jump) {
         canJump = true;
     }
     
-    updateParticles();
+    // Hantera landnings-partiklar
+    if (!wasGrounded && player.isGrounded) {
+        addLandingDust(player.x, player.y);
+        justLanded = true;
+        landTimer = 10;
+    }
     
-    // Rita allt
+    if (landTimer > 0) {
+        landTimer--;
+        if (landTimer === 0) justLanded = false;
+    }
+    
+    // Uppdatera och rita
+    updateParticles();
     drawBackground();
     player.draw(ctx);
     drawParticles();
     drawDebugInfo();
     
-    // Fortsätt loopen
     animationId = requestAnimationFrame(gameLoop);
 }
 
 // Initiera spelet
 function init() {
-    // Sätt canvas dimensioner
-    canvas.width = 800;
-    canvas.height = 600;
+    console.log('Initierar spelet...');
+    
+    // Först, sätt canvas storlek
+    resizeCanvas();
+    
+    // Initiera spelaren (efter att canvas storlek är satt)
+    initPlayer();
+    
+    // Sätt upp touch-kontroller
+    setupTouchControls();
     
     // Lägg till event listeners
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('resize', resizeCanvas);
-    
-    // Förhindra contextmeny på canvas
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    
-    // Hantera fönsterfokus
-    window.addEventListener('blur', () => {
-        // Återställ alla tangenttryckningar när fönstret tappar fokus
-        for(let key in keys) {
-            keys[key] = false;
+    window.addEventListener('resize', () => {
+        console.log('Fönster storlek ändrad, uppdaterar canvas...');
+        const oldGroundY = groundY;
+        resizeCanvas();
+        if (player) {
+            // Justera spelarens position vid resize
+            if (player.y + player.height > groundY) {
+                player.y = groundY - player.height;
+                player.velocityY = 0;
+                player.isGrounded = true;
+            }
+            console.log(`GroundY ändrades från ${oldGroundY} till ${groundY}, spelare y: ${player.y}`);
         }
     });
     
-    // Starta spelet
-    resizeCanvas();
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    // Starta spelloopen
     gameLoop();
     
-    console.log('Spelet är startat! Använd piltangenterna för att röra dig.');
+    console.log(`Spelet är startat! Canvas: ${canvas.width}x${canvas.height}, GroundY: ${groundY}`);
 }
 
 // Starta allt när sidan laddats

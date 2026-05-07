@@ -1,60 +1,229 @@
+/* Mobile First - Grundinställningar för mobil */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    user-select: none; /* Förhindra markering av text/knappar */
+    -webkit-tap-highlight-color: transparent; /* Ta bort grå highlight på touch */
 }
 
 body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 10px;
 }
 
-.game-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    padding: 20px;
-    border-radius: 20px;
+.game-wrapper {
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+    border-radius: 30px;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
+    padding: 15px;
     box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2);
 }
 
-#gameCanvas {
-    border: 3px solid #fff;
-    border-radius: 10px;
+.game-header h1 {
+    text-align: center;
+    color: white;
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    letter-spacing: 2px;
+}
+
+/* Canvas container - Högre för bättre skärmutnyttjande */
+.canvas-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+    border-radius: 20px;
+    overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
     background-color: #87CEEB;
     cursor: pointer;
+    touch-action: none; /* Förbättrar touch-respons */
 }
 
-.controls-info {
+/* Touch-knappar - Stora och lättanvända på mobil */
+.controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 10px;
+}
+
+.control-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 60px;
+    padding: 18px 12px;
     color: white;
-    font-size: 1.1rem;
-    text-align: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    touch-action: manipulation;
+    min-height: 80px;
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-icon {
+    font-size: 2rem;
+    font-weight: bold;
+    display: block;
+}
+
+.btn-text {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.left-btn {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.right-btn {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.jump-btn {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    box-shadow: 0 8px 15px rgba(67, 233, 123, 0.3);
+}
+
+.info-panel {
     background: rgba(0, 0, 0, 0.6);
-    padding: 10px 20px;
-    border-radius: 25px;
     backdrop-filter: blur(5px);
+    border-radius: 20px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.controls-info p {
-    margin: 0;
-    font-weight: 500;
+.info-item {
+    color: white;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
 }
 
-@media (max-width: 860px) {
-    #gameCanvas {
-        width: 95vw;
-        height: calc(95vw * 0.75);
+/* Desktop/Tablet förbättringar */
+@media (min-width: 768px) {
+    body {
+        padding: 20px;
     }
     
-    .controls-info {
+    .game-wrapper {
+        max-width: 800px;
+        padding: 25px;
+    }
+    
+    .game-header h1 {
+        font-size: 2rem;
+        margin-bottom: 20px;
+    }
+    
+    .controls {
+        gap: 25px;
+        padding: 15px;
+    }
+    
+    .control-btn {
+        padding: 22px 15px;
+        min-height: 100px;
+    }
+    
+    .btn-icon {
+        font-size: 2.5rem;
+    }
+    
+    .btn-text {
+        font-size: 1rem;
+    }
+    
+    .info-item {
         font-size: 0.9rem;
+        padding: 8px 15px;
+    }
+}
+
+/* För extra stora skärmar */
+@media (min-width: 1024px) {
+    .game-wrapper {
+        max-width: 900px;
+    }
+    
+    .control-btn {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .control-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .control-btn:active {
+        transform: scale(0.97);
+    }
+}
+
+/* Landskapsläge på mobil */
+@media (max-width: 768px) and (orientation: landscape) {
+    .game-wrapper {
+        padding: 10px;
+    }
+    
+    .game-header h1 {
+        font-size: 1rem;
+        margin-bottom: 8px;
+    }
+    
+    .controls {
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .control-btn {
+        padding: 10px 8px;
+        min-height: 60px;
+    }
+    
+    .btn-icon {
+        font-size: 1.5rem;
+    }
+    
+    .btn-text {
+        font-size: 0.6rem;
+    }
+    
+    .info-item {
+        font-size: 0.65rem;
     }
 }
